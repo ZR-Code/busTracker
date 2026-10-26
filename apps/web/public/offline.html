@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>BusBuddy — Offline</title>
+    <style>
+      body { margin: 0; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; background: #F5F7FA; color: #142235; display: grid; place-items: center; min-height: 100vh; padding: 16px; box-sizing: border-box; }
+      main { max-width: 420px; background: #fff; border: 1px solid #dbe2ea; border-radius: 16px; padding: 28px; text-align: center; }
+      h1 { font-size: 1.4rem; margin: 12px 0 8px; }
+      p { color: #5b6b7f; line-height: 1.5; }
+      button { margin-top: 12px; height: 44px; padding: 0 20px; border: 0; border-radius: 10px; background: #2878E5; color: #fff; font-weight: 600; font-size: 1rem; cursor: pointer; }
+      @media (prefers-color-scheme: dark) { body { background: #0c1522; color: #e6edf6; } main { background: #142133; border-color: #26384f; } p { color: #9aabbf; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <img src="/icon.svg" width="56" height="56" alt="" />
+      <h1>You’re offline</h1>
+      <p>BusBuddy needs a connection to show where your bus is. Bus locations are never stored on this device, so there’s nothing to show until you reconnect.</p>
+      <button type="button" onclick="location.reload()">Try again</button>
+    </main>
+  </body>
+</html>

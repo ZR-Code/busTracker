@@ -1,0 +1,49 @@
+{
+  "name": "@busbuddy/web",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit -p tsconfig.json && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@busbuddy/shared": "*",
+    "@fontsource-variable/inter": "5.2.8",
+    "@hookform/resolvers": "5.2.2",
+    "@radix-ui/react-alert-dialog": "1.1.15",
+    "@radix-ui/react-dialog": "1.1.15",
+    "@radix-ui/react-switch": "1.2.6",
+    "@supabase/supabase-js": "2.75.0",
+    "@tanstack/react-query": "5.90.2",
+    "clsx": "2.1.1",
+    "leaflet": "1.9.4",
+    "lucide-react": "0.544.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-hook-form": "7.63.0",
+    "react-leaflet": "4.2.1",
+    "react-router-dom": "7.9.3",
+    "sonner": "2.0.7",
+    "tailwind-merge": "3.3.1",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "4.1.13",
+    "@testing-library/jest-dom": "6.8.0",
+    "@testing-library/react": "16.3.0",
+    "@testing-library/user-event": "14.6.1",
+    "@types/leaflet": "1.9.20",
+    "@types/react": "18.3.24",
+    "@types/react-dom": "18.3.7",
+    "@vitejs/plugin-react": "4.7.0",
+    "jsdom": "26.1.0",
+    "tailwindcss": "4.1.13",
+    "typescript": "5.9.3",
+    "vite": "6.3.6",
+    "vitest": "3.2.4"
+  }
+}

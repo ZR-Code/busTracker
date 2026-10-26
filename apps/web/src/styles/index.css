@@ -1,0 +1,158 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/inter';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --bb-navy: #16324f;
+  --bb-blue: #2878e5;
+  --bb-blue-strong: #1d63c4;
+  --bb-success: #16a34a;
+  --bb-success-text: #15803d;
+  --bb-warning: #f59e0b;
+  --bb-warning-text: #92400e;
+  --bb-danger: #dc2626;
+  --bb-danger-text: #b91c1c;
+
+  --bb-bg: #f5f7fa;
+  --bb-surface: #ffffff;
+  --bb-surface-muted: #eef2f7;
+  --bb-text: #142235;
+  --bb-muted: #5b6b7f;
+  --bb-border: #dbe2ea;
+  --bb-ring: #2878e5;
+  --bb-primary-fg: #ffffff;
+  --bb-success-soft: #e8f6ee;
+  --bb-warning-soft: #fff4dc;
+  --bb-danger-soft: #fdecec;
+  --bb-info-soft: #e7f0fd;
+  --bb-demo: #6d28d9;
+  --bb-demo-soft: #f1ebfd;
+
+  --bb-band: #16324f;
+  --bb-band-deep: #0f2a44;
+  --bb-accent: #f59e0b;
+  --bb-accent-hover: #e08e06;
+  --bb-accent-fg: #1f1300;
+}
+
+.dark {
+  --bb-navy: #9cc3f5;
+  --bb-blue: #5b9bf0;
+  --bb-blue-strong: #7cb0f5;
+  --bb-success-text: #4ade80;
+  --bb-warning-text: #fbbf24;
+  --bb-danger-text: #f87171;
+
+  --bb-bg: #0c1522;
+  --bb-surface: #142133;
+  --bb-surface-muted: #1b2b40;
+  --bb-text: #e6edf6;
+  --bb-muted: #9aabbf;
+  --bb-border: #26384f;
+  --bb-primary-fg: #0c1522;
+  --bb-success-soft: #12301f;
+  --bb-warning-soft: #3a2a0c;
+  --bb-danger-soft: #3a1416;
+  --bb-info-soft: #13284a;
+  --bb-demo: #c4b5fd;
+  --bb-demo-soft: #2a1e4d;
+}
+
+@theme inline {
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --color-navy: var(--bb-navy);
+  --color-brand: var(--bb-blue);
+  --color-brand-strong: var(--bb-blue-strong);
+  --color-success: var(--bb-success);
+  --color-success-text: var(--bb-success-text);
+  --color-success-soft: var(--bb-success-soft);
+  --color-warning: var(--bb-warning);
+  --color-warning-text: var(--bb-warning-text);
+  --color-warning-soft: var(--bb-warning-soft);
+  --color-danger: var(--bb-danger);
+  --color-danger-text: var(--bb-danger-text);
+  --color-danger-soft: var(--bb-danger-soft);
+  --color-info-soft: var(--bb-info-soft);
+  --color-demo: var(--bb-demo);
+  --color-demo-soft: var(--bb-demo-soft);
+  --color-bg: var(--bb-bg);
+  --color-surface: var(--bb-surface);
+  --color-surface-muted: var(--bb-surface-muted);
+  --color-text: var(--bb-text);
+  --color-muted: var(--bb-muted);
+  --color-border: var(--bb-border);
+  --color-ring: var(--bb-ring);
+  --color-primary-fg: var(--bb-primary-fg);
+  --color-band: var(--bb-band);
+  --color-band-deep: var(--bb-band-deep);
+  --color-accent: var(--bb-accent);
+  --color-accent-hover: var(--bb-accent-hover);
+  --color-accent-fg: var(--bb-accent-fg);
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-bg text-text font-sans antialiased;
+  }
+  :focus-visible {
+    outline: 3px solid var(--bb-ring);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  ::selection {
+    background: color-mix(in srgb, var(--bb-blue) 25%, transparent);
+  }
+  .bb-band {
+    --bb-ring: var(--bb-accent);
+  }
+  .bb-band ::selection {
+    background: color-mix(in srgb, var(--bb-accent) 40%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.leaflet-container {
+  font-family: inherit;
+  background: var(--bb-surface-muted);
+  border-radius: inherit;
+}
+.leaflet-container:focus-visible {
+  outline: 3px solid var(--bb-ring);
+  outline-offset: -3px;
+}
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: var(--bb-surface);
+  color: var(--bb-text);
+}
+.leaflet-popup-content {
+  margin: 12px 14px;
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+.leaflet-control-attribution {
+  font-size: 10px;
+}
+.dark .leaflet-tile-pane {
+  filter: brightness(0.75) contrast(1.1) saturate(0.85);
+}
+.bb-bus-icon {
+  transition: none;
+}
+.bb-bus-icon svg {
+  filter: drop-shadow(0 2px 3px rgb(0 0 0 / 0.35));
+}

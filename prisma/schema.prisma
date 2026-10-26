@@ -1,0 +1,394 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  student
+  parent
+  admin
+}
+
+enum BusStatus {
+  scheduled
+  in_transit
+  approaching_stop
+  at_stop
+  delayed
+  out_of_service
+  completed
+}
+
+enum DataSource {
+  demo_simulation
+  district_gps
+  manual_test
+}
+
+enum NotificationCategory {
+  bus_approaching
+  delay
+  route_change
+  service_cancellation
+  general
+}
+
+enum AnnouncementSeverity {
+  info
+  warning
+  critical
+}
+
+enum VerificationStatus {
+  pending
+  verified
+  rejected
+}
+
+enum SimulationBusPhase {
+  waiting
+  moving
+  dwelling
+  completed
+  out_of_service
+}
+
+model School {
+  id        String   @id @default(cuid())
+  name      String
+  address   String
+  timeZone  String
+  lat       Float
+  lng       Float
+  isDemo    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users           User[]
+  studentProfiles StudentProfile[]
+  buses           Bus[]
+  routes          Route[]
+  stops           Stop[]
+  announcements   ServiceAnnouncement[]
+}
+
+model User {
+  id             String   @id @default(cuid())
+  name           String
+  email          String?  @unique
+  passwordHash   String?
+  authProviderId String?  @unique
+  role           Role
+  schoolId       String?
+  isDemo         Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  school          School?                     @relation(fields: [schoolId], references: [id], onDelete: SetNull)
+  studentProfile  StudentProfile?
+  settings        UserSettings?
+  sessions        Session[]
+  resetTokens     PasswordResetToken[]
+  stopPreferences UserStopPreference[]
+  notifications   Notification[]
+  parentLinks     ParentStudentRelationship[] @relation("ParentLinks")
+  studentLinks    ParentStudentRelationship[] @relation("StudentLinks")
+  linkCodes       LinkCode[]
+  announcements   ServiceAnnouncement[]
+  auditEntries    AuditLog[]
+
+  @@index([role])
+  @@index([isDemo, createdAt])
+}
+
+model UserSettings {
+  userId               String  @id
+  reminderLeadMinutes  Int     @default(5)
+  remindersEnabled     Boolean @default(true)
+  browserNotifications Boolean @default(false)
+  distanceUnits        String  @default("imperial")
+  theme                String  @default("system")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Session {
+  id         String   @id @default(cuid())
+  tokenHash  String   @unique
+  userId     String
+  createdAt  DateTime @default(now())
+  expiresAt  DateTime
+  lastSeenAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  userId    String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model StudentProfile {
+  userId          String  @id
+  schoolId        String
+  assignedRouteId String?
+  defaultStopId   String?
+
+  user          User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  school        School @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  assignedRoute Route? @relation(fields: [assignedRouteId], references: [id], onDelete: SetNull)
+  defaultStop   Stop?  @relation(fields: [defaultStopId], references: [id], onDelete: SetNull)
+
+  @@index([assignedRouteId])
+}
+
+model ParentStudentRelationship {
+  id           String             @id @default(cuid())
+  parentId     String
+  studentId    String
+  status       VerificationStatus @default(pending)
+  verifiedById String?
+  verifiedAt   DateTime?
+  createdAt    DateTime           @default(now())
+
+  parent  User @relation("ParentLinks", fields: [parentId], references: [id], onDelete: Cascade)
+  student User @relation("StudentLinks", fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([parentId, studentId])
+  @@index([studentId])
+  @@index([status])
+}
+
+model LinkCode {
+  id        String    @id @default(cuid())
+  codeHash  String    @unique
+  studentId String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  student User @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+}
+
+model Route {
+  id                 String   @id @default(cuid())
+  name               String
+  number             String
+  schoolId           String
+  color              String   @default("#2878E5")
+  geometry           Json?
+  active             Boolean  @default(true)
+  scheduledStartTime String
+  scheduledEndTime   String
+  isDemo             Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  school          School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  stops           RouteStop[]
+  buses           Bus[]
+  studentProfiles StudentProfile[]
+  announcements   AnnouncementRoute[]
+
+  @@unique([schoolId, number])
+}
+
+model Stop {
+  id          String   @id @default(cuid())
+  name        String
+  lat         Float
+  lng         Float
+  description String   @default("")
+  schoolId    String
+  isDemo      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  school          School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  routes          RouteStop[]
+  preferences     UserStopPreference[]
+  studentProfiles StudentProfile[]
+
+  @@index([schoolId])
+}
+
+model RouteStop {
+  routeId                String
+  stopId                 String
+  stopOrder              Int
+  scheduledArrivalTime   String
+  scheduledDepartureTime String
+
+  route Route @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  stop  Stop  @relation(fields: [stopId], references: [id], onDelete: Cascade)
+
+  @@id([routeId, stopId])
+  @@unique([routeId, stopOrder])
+  @@index([stopId])
+}
+
+model Bus {
+  id         String     @id @default(cuid())
+  busNumber  String
+  schoolId   String
+  routeId    String?
+  status     BusStatus  @default(scheduled)
+  dataSource DataSource @default(demo_simulation)
+  capacity   Int        @default(72)
+  isDemo     Boolean    @default(false)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  school     School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  route      Route?           @relation(fields: [routeId], references: [id], onDelete: SetNull)
+  locations  BusLocation[]
+  simulation SimulationState?
+
+  @@unique([schoolId, busNumber])
+  @@index([routeId])
+}
+
+model BusLocation {
+  id         String     @id @default(cuid())
+  busId      String
+  lat        Float
+  lng        Float
+  heading    Float      @default(0)
+  speedMps   Float      @default(0)
+  recordedAt DateTime
+  dataSource DataSource
+  createdAt  DateTime   @default(now())
+
+  bus Bus @relation(fields: [busId], references: [id], onDelete: Cascade)
+
+  @@index([busId, recordedAt(sort: Desc)])
+  @@index([recordedAt])
+}
+
+model UserStopPreference {
+  userId              String
+  stopId              String
+  favorite            Boolean  @default(false)
+  reminderLeadMinutes Int?
+  updatedAt           DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stop Stop @relation(fields: [stopId], references: [id], onDelete: Cascade)
+
+  @@id([userId, stopId])
+  @@index([stopId])
+}
+
+model Notification {
+  id        String               @id @default(cuid())
+  userId    String
+  category  NotificationCategory
+  title     String
+  body      String
+  busId     String?
+  stopId    String?
+  routeId   String?
+  eventKey  String?
+  isDemo    Boolean              @default(false)
+  createdAt DateTime             @default(now())
+  readAt    DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, eventKey])
+  @@index([userId, createdAt(sort: Desc)])
+}
+
+model ServiceAnnouncement {
+  id            String               @id @default(cuid())
+  schoolId      String
+  title         String
+  body          String
+  severity      AnnouncementSeverity @default(info)
+  category      NotificationCategory @default(general)
+  publishedAt   DateTime             @default(now())
+  expiresAt     DateTime?
+  publishedById String?
+  isDemo        Boolean              @default(false)
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  school      School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  publishedBy User?               @relation(fields: [publishedById], references: [id], onDelete: SetNull)
+  routes      AnnouncementRoute[]
+
+  @@index([schoolId, publishedAt(sort: Desc)])
+}
+
+model AnnouncementRoute {
+  announcementId String
+  routeId        String
+
+  announcement ServiceAnnouncement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  route        Route               @relation(fields: [routeId], references: [id], onDelete: Cascade)
+
+  @@id([announcementId, routeId])
+  @@index([routeId])
+}
+
+model SimulationState {
+  busId                 String             @id
+  phase                 SimulationBusPhase @default(waiting)
+  progressMeters        Float              @default(0)
+  segmentIndex          Int                @default(0)
+  nextStopIndex         Int                @default(0)
+  speedMps              Float              @default(0)
+  dwellRemainingSeconds Float              @default(0)
+  waitRemainingSeconds  Float              @default(0)
+  tripNumber            Int                @default(1)
+  tripScheduledStartSec Float              @default(0)
+  lastUpdateAt          DateTime           @default(now())
+
+  initialProgressMeters Float              @default(0)
+  initialPhase          SimulationBusPhase @default(moving)
+  initialDelaySeconds   Float              @default(0)
+  startDelaySeconds     Float              @default(0)
+  cruiseSpeedMps        Float              @default(10)
+  speedFactor           Float              @default(1)
+  autoRestart           Boolean            @default(true)
+
+  bus Bus @relation(fields: [busId], references: [id], onDelete: Cascade)
+}
+
+model SimulationSettings {
+  id              String   @id @default("global")
+  running         Boolean  @default(true)
+  speedMultiplier Int      @default(1)
+  simClockSeconds Float    @default(0)
+  resetAt         DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  action    String
+  summary   String
+  createdAt DateTime @default(now())
+
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt(sort: Desc)])
+}
