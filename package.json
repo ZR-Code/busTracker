@@ -25,7 +25,7 @@
     "test": "npm run test --workspaces --if-present",
     "test:e2e": "playwright test",
     "build": "npm run build --workspaces --if-present",
-    "postinstall": "prisma generate"
+    "postinstall": "node scripts/postinstall.mjs"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
