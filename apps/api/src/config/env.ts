@@ -54,6 +54,7 @@ const schema = z
     DISTRICT_GPS_POLL_SECONDS: int(10, 2),
     GPS_INGEST_API_KEY: optionalString,
     AUTH_RATE_LIMIT_MAX: int(20, 1),
+    TRUST_PROXY: int(1, 0),
     WEB_APP_URL: z.string().default('http://localhost:5173'),
   })
   .superRefine((v, ctx) => {

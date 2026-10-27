@@ -9,3 +9,4 @@ coverage/
 playwright-report/
 test-results/
 apps/web/dev-dist/
+.vercel

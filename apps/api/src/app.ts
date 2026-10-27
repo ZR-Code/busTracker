@@ -17,7 +17,7 @@ import { systemRouter } from './routes/system';
 export function createApp(ctx: AppContext): Express {
   const app = express();
   app.disable('x-powered-by');
-  app.set('trust proxy', 1);
+  app.set('trust proxy', ctx.env.TRUST_PROXY);
   app.use(helmet());
   app.use(
     cors({
