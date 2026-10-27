@@ -28,7 +28,26 @@ export function onUnauthorized(handler: () => void): void {
   unauthorizedHandler = handler;
 }
 
-async function request<T>(method: string, path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
+export interface LocalBackend {
+  handle(method: string, path: string, body: unknown): Promise<{ status: number; body?: unknown }>;
+}
+
+let localBackend: LocalBackend | null = null;
+
+export function setLocalBackend(backend: LocalBackend | null): void {
+  localBackend = backend;
+}
+
+export function usingLocalBackend(): boolean {
+  return localBackend !== null;
+}
+
+async function send(method: string, path: string, body: unknown, signal?: AbortSignal): Promise<{ status: number; data: unknown }> {
+  if (localBackend) {
+    const res = await localBackend.handle(method, path, body === undefined ? undefined : JSON.parse(JSON.stringify(body)));
+    return { status: res.status, data: res.body ?? null };
+  }
+
   const headers: Record<string, string> = { Accept: 'application/json', 'X-BusBuddy-Client': 'web' };
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   const token = tokenSource ? await tokenSource() : null;
@@ -47,7 +66,7 @@ async function request<T>(method: string, path: string, body?: unknown, signal?:
     if (e instanceof DOMException && e.name === 'AbortError') throw e;
     throw new ApiError(0, 'network_error', 'Can’t reach BusBuddy. Check your connection and try again.');
   }
-  if (res.status === 204) return undefined as T;
+  if (res.status === 204) return { status: 204, data: null };
   const text = await res.text();
   let data: unknown = null;
   try {
@@ -55,10 +74,16 @@ async function request<T>(method: string, path: string, body?: unknown, signal?:
   } catch {
     data = null;
   }
-  if (!res.ok) {
+  return { status: res.status, data };
+}
+
+async function request<T>(method: string, path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
+  const { status, data } = await send(method, path, body, signal);
+  if (status === 204) return undefined as T;
+  if (status < 200 || status >= 300) {
     const err = (data as ApiErrorBody | null)?.error;
-    const apiError = new ApiError(res.status, err?.code ?? 'http_error', err?.message ?? `Request failed (${res.status}).`, err?.details);
-    if (res.status === 401 && path !== '/me' && !path.startsWith('/auth/')) unauthorizedHandler?.();
+    const apiError = new ApiError(status, err?.code ?? 'http_error', err?.message ?? `Request failed (${status}).`, err?.details);
+    if (status === 401 && path !== '/me' && !path.startsWith('/auth/')) unauthorizedHandler?.();
     throw apiError;
   }
   return data as T;

@@ -1,7 +1,8 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { AuthConfigDto, LoginInput, MeDto, SignupInput } from '@busbuddy/shared';
-import { api, onUnauthorized } from '@/lib/api';
+import { loadAuthConfig } from '@/demo-backend/connect';
+import { api, onUnauthorized, usingLocalBackend } from '@/lib/api';
 import { createLocalAuthClient, createSupabaseAuthClient, type AuthClient } from '@/services/auth-client';
 
 type Status = 'loading' | 'authenticated' | 'anonymous';
@@ -11,6 +12,7 @@ interface AuthContextValue {
   me: MeDto | null;
   config: AuthConfigDto | null;
   configError: boolean;
+  serverAvailable: boolean;
   signIn(input: LoginInput): Promise<MeDto | null>;
   signUp(input: SignupInput): Promise<{ needsEmailConfirmation: boolean }>;
   signOut(): Promise<void>;
@@ -26,20 +28,37 @@ export const ME_KEY = ['me'] as const;
 export function AuthProvider({ children }: { children: ReactNode }) {
   const qc = useQueryClient();
   const [client, setClient] = useState<AuthClient | null>(null);
+  const [clientReady] = useState(() => {
+    let resolve!: (c: AuthClient) => void;
+    let reject!: (e: Error) => void;
+    const promise = new Promise<AuthClient>((res, rej) => {
+      resolve = res;
+      reject = rej;
+    });
+    promise.catch(() => {});
+    return { promise, resolve, reject };
+  });
 
-  const configQuery = useQuery({ queryKey: ['auth-config'], queryFn: () => api.get<AuthConfigDto>('/auth/config'), staleTime: Infinity, retry: 2 });
+  const configQuery = useQuery({ queryKey: ['auth-config'], queryFn: loadAuthConfig, staleTime: Infinity, retry: 1 });
 
   useEffect(() => {
     const cfg = configQuery.data;
     if (!cfg) return;
     let cancelled = false;
     (cfg.provider === 'supabase' && cfg.supabase ? createSupabaseAuthClient(cfg.supabase) : Promise.resolve(createLocalAuthClient())).then((c) => {
-      if (!cancelled) setClient(c);
+      if (!cancelled) {
+        setClient(c);
+        clientReady.resolve(c);
+      }
     });
     return () => {
       cancelled = true;
     };
-  }, [configQuery.data]);
+  }, [configQuery.data, clientReady]);
+
+  useEffect(() => {
+    if (configQuery.isError) clientReady.reject(new Error('Can’t reach the BusBuddy server right now. Please try again in a moment.'));
+  }, [configQuery.isError, clientReady]);
 
   const meQuery = useQuery({
     queryKey: ME_KEY,
@@ -71,10 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     qc.removeQueries({ predicate: (q) => q.queryKey[0] !== 'me' && q.queryKey[0] !== 'auth-config' });
   }, [qc]);
 
-  const need = useCallback(() => {
-    if (!client) throw new Error('Authentication is still loading. Please try again in a moment.');
-    return client;
-  }, [client]);
+  const need = useCallback(async () => client ?? clientReady.promise, [client, clientReady]);
 
   const value = useMemo<AuthContextValue>(() => {
     const me = meQuery.data ?? null;
@@ -84,30 +100,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       me,
       config: configQuery.data ?? null,
       configError: configQuery.isError,
+      serverAvailable: !(configQuery.data && usingLocalBackend()),
       async signIn(input) {
-        await need().signIn(input);
+        await (await need()).signIn(input);
         resetUserData();
         return refresh();
       },
       async signUp(input) {
-        const r = await need().signUp(input);
+        const r = await (await need()).signUp(input);
         resetUserData();
         await refresh();
         return r;
       },
       async signOut() {
-        await need().signOut().catch(() => {});
+        await (await need()).signOut().catch(() => {});
         qc.setQueryData(ME_KEY, null);
         resetUserData();
       },
       async startDemo(persona) {
-        const result = await need().startDemo(persona);
+        const result = await (await need()).startDemo(persona);
         resetUserData();
         qc.setQueryData(ME_KEY, result);
         return result;
       },
-      requestPasswordReset: (email) => need().requestPasswordReset(email),
-      resetPassword: (token, password) => need().resetPassword(token, password),
+      requestPasswordReset: async (email) => (await need()).requestPasswordReset(email),
+      resetPassword: async (token, password) => (await need()).resetPassword(token, password),
       refresh,
     };
   }, [meQuery.data, meQuery.isPending, configQuery.data, configQuery.isError, client, need, refresh, resetUserData, qc]);

@@ -37,6 +37,17 @@ function FormError({ message }: { message: string | null }) {
   );
 }
 
+function ServerRequiredNotice() {
+  const { serverAvailable } = useAuth();
+  if (serverAvailable) return null;
+  return (
+    <p className="mb-4 flex gap-2 rounded-lg border border-border bg-surface-muted px-3 py-2 text-sm">
+      <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted" aria-hidden />
+      <span>Accounts need the BusBuddy server, which isn’t connected to this site. The interactive demo runs entirely in your browser and works without it.</span>
+    </p>
+  );
+}
+
 function DemoCallout() {
   const { config } = useAuth();
   const { start, pending } = useStartDemo();
@@ -60,7 +71,7 @@ function DemoCallout() {
 }
 
 export function LoginPage() {
-  const { signIn, me, config } = useAuth();
+  const { signIn, me, config, serverAvailable } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [error, setError] = useState<string | null>(null);
@@ -93,6 +104,7 @@ export function LoginPage() {
         </>
       }
     >
+      <ServerRequiredNotice />
       <form onSubmit={onSubmit} noValidate className="space-y-4">
         <FormError message={error} />
         <Field label="Email" error={form.formState.errors.email?.message}>
@@ -110,7 +122,7 @@ export function LoginPage() {
           Sign in
         </Button>
       </form>
-      {config?.provider === 'local' && <p className="mt-4 text-xs text-muted">Accounts on this deployment are stored by BusBuddy’s own server (passwords are hashed with bcrypt).</p>}
+      {config?.provider === 'local' && serverAvailable && <p className="mt-4 text-xs text-muted">Accounts on this deployment are stored by BusBuddy’s own server (passwords are hashed with bcrypt).</p>}
       <DemoCallout />
     </AuthCard>
   );
@@ -162,6 +174,7 @@ export function SignupPage() {
         </>
       }
     >
+      <ServerRequiredNotice />
       {schools.isError ? (
         <ErrorState message="We couldn’t load the list of schools." onRetry={() => schools.refetch()} />
       ) : (
@@ -234,6 +247,7 @@ export function ForgotPasswordPage() {
 
   return (
     <AuthCard title="Reset your password" footer={<Link to="/login" className="font-semibold text-brand-strong underline">Back to sign in</Link>}>
+      <ServerRequiredNotice />
       {sent ? (
         <div className="space-y-3 text-sm" role="status">
           <p className="flex gap-2">
@@ -297,6 +311,7 @@ export function ResetPasswordPage() {
 
   return (
     <AuthCard title="Choose a new password">
+      <ServerRequiredNotice />
       <form onSubmit={onSubmit} noValidate className="space-y-4">
         <FormError message={error} />
         <Field label="New password" hint="At least 10 characters, with a letter and a number." error={form.formState.errors.password?.message}>
@@ -337,7 +352,7 @@ export function DemoPage() {
           <p className="text-sm text-muted">Casey follows two verified students — one on a delayed bus — and has one link awaiting school verification.</p>
         </button>
       </div>
-      <p className="mt-5 text-xs text-muted">Demo sessions never have administrator access. Administrators sign in with an account created by the school (see the Demo Guide for the local admin account).</p>
+      <p className="mt-5 text-xs text-muted">Demo sessions never have administrator access. Administrators sign in with an account created by the school.</p>
     </AuthCard>
   );
 }

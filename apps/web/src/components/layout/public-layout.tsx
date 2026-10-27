@@ -4,7 +4,7 @@ import { Logo } from '@/components/brand/logo';
 import { ButtonLink } from '@/components/ui/button';
 
 export function PublicLayout() {
-  const { me, status, config } = useAuth();
+  const { me, status, config, serverAvailable } = useAuth();
   return (
     <div className="flex min-h-dvh flex-col">
       <a href="#main" className="sr-only z-[2000] rounded bg-surface px-4 py-2 focus:not-sr-only focus:fixed focus:left-3 focus:top-3">
@@ -22,9 +22,11 @@ export function PublicLayout() {
               </ButtonLink>
             ) : (
               <>
-                <NavLink to="/login" className="inline-flex h-9 items-center whitespace-nowrap rounded-lg px-2.5 text-sm font-semibold hover:bg-surface-muted sm:px-3">
-                  Sign in
-                </NavLink>
+                {serverAvailable && (
+                  <NavLink to="/login" className="inline-flex h-9 items-center whitespace-nowrap rounded-lg px-2.5 text-sm font-semibold hover:bg-surface-muted sm:px-3">
+                    Sign in
+                  </NavLink>
+                )}
                 {config?.demoEnabled === false ? (
                   <ButtonLink to="/signup" size="sm">
                     Create account

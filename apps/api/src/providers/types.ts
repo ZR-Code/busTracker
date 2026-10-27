@@ -1,26 +1,6 @@
-import type { DataSource, ProviderStatusDto, SimulationBusPhase } from '@busbuddy/shared';
+import type { DataSource, LiveLocation, ProviderStatusDto } from '@busbuddy/shared';
 
-export interface ProviderLocation {
-  busId: string;
-  lat: number;
-  lng: number;
-  heading: number;
-  speedMps: number;
-  recordedAt: Date;
-  dataSource: DataSource;
-  tripId: string;
-  progressMeters?: number;
-  simulation?: {
-    phase: SimulationBusPhase;
-    dwellRemainingSeconds: number;
-    departsInSeconds: number;
-    tripScheduledStartMs: number;
-    timeScale: number;
-    cruiseSpeedMps: number;
-    running: boolean;
-    speedMultiplier: number;
-  };
-}
+export type ProviderLocation = LiveLocation;
 
 export type LocationListener = (locations: ProviderLocation[]) => void;
 

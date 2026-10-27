@@ -1,4 +1,5 @@
-import { buildRoutePath, positionAlong, type LatLngTuple, type RoutePath, type SimulationBusPhase } from '@busbuddy/shared';
+import { buildRoutePath, positionAlong, type LatLngTuple, type RoutePath } from './geo';
+import type { SimulationBusPhase } from './constants';
 
 export interface SimRouteStop {
   stopId: string;

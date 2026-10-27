@@ -4,4 +4,7 @@ export * from './eta';
 export * from './reminders';
 export * from './schemas';
 export * from './format';
+export * from './simulation';
+export * from './time';
+export * from './live';
 export type * from './api-types';

@@ -7,7 +7,7 @@ import { useStartDemo } from '@/features/auth/use-start-demo';
 import { HeroIllustration } from './hero-illustration';
 
 export function LandingPage() {
-  const { me, config } = useAuth();
+  const { me, config, serverAvailable } = useAuth();
   const navigate = useNavigate();
   const { start, pending } = useStartDemo();
   const demoEnabled = config?.demoEnabled !== false;
@@ -23,7 +23,7 @@ export function LandingPage() {
               BusBuddy shows where your school bus is, how many minutes until it reaches your stop, and whether it’s running late — so students know exactly when to leave home and parents know their kids are on their way.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Button size="lg" className="bg-accent text-accent-fg hover:bg-accent-hover" onClick={() => (me ? navigate(homePathFor(me)) : navigate('/login'))}>
+              <Button size="lg" className="bg-accent text-accent-fg hover:bg-accent-hover" onClick={() => (me ? navigate(homePathFor(me)) : serverAvailable ? navigate('/login') : start('student'))}>
                 <MapPinned className="h-5 w-5" aria-hidden /> Track Your Bus
               </Button>
               {demoEnabled ? (

@@ -1,10 +1,11 @@
-import { PrismaClient, type SimulationBusPhase } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { config } from 'dotenv';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
-import { buildRoutePath, projectStopsInOrder, timeOfDayFromMinutes, minutesFromTimeOfDay, type LatLngTuple } from '@busbuddy/shared';
+import { makeSimRoute, SimulationEngine, minutesFromTimeOfDay } from '@busbuddy/shared';
 import {
+  DEMO_ANNOUNCEMENTS,
   DEMO_BUSES,
   DEMO_DWELL_SECONDS,
   DEMO_PEOPLE,
@@ -12,13 +13,11 @@ import {
   DEMO_SCHOOL,
   DEMO_SCHOOL_ID,
   DEMO_SCHOOL_STOP,
-  type DemoBus,
+  demoRouteSchedule,
+  demoSimulationConfig,
 } from '@busbuddy/shared/demo';
-import { makeSimRoute, SimulationEngine } from '../apps/api/src/simulation/engine';
 
 config({ path: resolve(dirname(fileURLToPath(import.meta.url)), '..', '.env') });
-
-const PLANNING_SPEED_MPS = 7.8;
 
 export async function seed(prisma: PrismaClient, opts: { resetSimulation?: boolean; log?: (m: string) => void } = {}) {
   const log = opts.log ?? console.log;
@@ -37,12 +36,8 @@ export async function seed(prisma: PrismaClient, opts: { resetSimulation?: boole
 
   const stopDistances = new Map<string, number[]>();
   for (const r of DEMO_ROUTES) {
-    const path = buildRoutePath(r.geometry);
-    const distances = projectStopsInOrder(path, r.stops.map((s) => [s.lat, s.lng] as LatLngTuple));
+    const { distances, arrivalTimes, endTime } = demoRouteSchedule(r);
     stopDistances.set(r.id, distances);
-    const startMin = minutesFromTimeOfDay(r.scheduledStartTime);
-    const arrivals = distances.map((d, i) => startMin + Math.round((d / PLANNING_SPEED_MPS + DEMO_DWELL_SECONDS * i) / 60));
-    const endTime = timeOfDayFromMinutes(arrivals[arrivals.length - 1]!);
     const data = {
       name: r.name,
       number: r.number,
@@ -62,8 +57,8 @@ export async function seed(prisma: PrismaClient, opts: { resetSimulation?: boole
           routeId: r.id,
           stopId: s.id,
           stopOrder: i + 1,
-          scheduledArrivalTime: timeOfDayFromMinutes(arrivals[i]!),
-          scheduledDepartureTime: timeOfDayFromMinutes(arrivals[i]!),
+          scheduledArrivalTime: arrivalTimes[i]!,
+          scheduledDepartureTime: arrivalTimes[i]!,
         })),
       }),
     ]);
@@ -73,7 +68,7 @@ export async function seed(prisma: PrismaClient, opts: { resetSimulation?: boole
     const data = { busNumber: b.busNumber, schoolId: DEMO_SCHOOL_ID, routeId: b.routeId, status: b.status, dataSource: b.dataSource, capacity: b.capacity, isDemo: true };
     await prisma.bus.upsert({ where: { id: b.id }, create: { id: b.id, ...data }, update: data });
     if (b.simulation && b.routeId) {
-      const cfg = simulationConfig(b, stopDistances.get(b.routeId)!, DEMO_ROUTES.find((r) => r.id === b.routeId)!.geometry);
+      const cfg = demoSimulationConfig(b, stopDistances.get(b.routeId)!, DEMO_ROUTES.find((r) => r.id === b.routeId)!.geometry);
       const existing = await prisma.simulationState.findUnique({ where: { busId: b.id } });
       const route = DEMO_ROUTES.find((r) => r.id === b.routeId)!;
       const arrivals = await prisma.routeStop.findMany({ where: { routeId: route.id }, orderBy: { stopOrder: 'asc' } });
@@ -159,25 +154,7 @@ export async function seed(prisma: PrismaClient, opts: { resetSimulation?: boole
     });
   }
 
-  const announcements = [
-    {
-      id: 'demo-announcement-welcome',
-      title: 'Welcome to the Maplewood Valley demo district',
-      body: 'Maplewood Valley Unified is a fictional district created to demonstrate BusBuddy. Bus movement in this demo is simulated and does not represent real vehicles.',
-      severity: 'info' as const,
-      category: 'general' as const,
-      routes: [] as string[],
-    },
-    {
-      id: 'demo-announcement-detour',
-      title: 'Route 3 detour this week (demo)',
-      body: 'Sample announcement: construction near Old Mill Junction may add a few minutes to Route 3. Stops are unchanged.',
-      severity: 'warning' as const,
-      category: 'route_change' as const,
-      routes: ['demo-route-3'],
-    },
-  ];
-  for (const a of announcements) {
+  for (const a of DEMO_ANNOUNCEMENTS) {
     const data = { schoolId: DEMO_SCHOOL_ID, title: a.title, body: a.body, severity: a.severity, category: a.category, isDemo: true, expiresAt: null };
     await prisma.serviceAnnouncement.upsert({ where: { id: a.id }, create: { id: a.id, ...data }, update: data });
     await prisma.announcementRoute.deleteMany({ where: { announcementId: a.id } });
@@ -203,33 +180,6 @@ export async function seed(prisma: PrismaClient, opts: { resetSimulation?: boole
   log(`[seed] Demo data ready: 1 school, ${DEMO_ROUTES.length} routes, ${allStops.length} stops, ${DEMO_BUSES.length} buses.`);
 }
 
-function simulationConfig(b: DemoBus, distances: number[], geometry: LatLngTuple[]) {
-  const sim = b.simulation!;
-  const length = buildRoutePath(geometry).lengthMeters;
-  let initialProgressMeters: number;
-  let initialPhase: SimulationBusPhase;
-  if (sim.startAt === 'route_start') {
-    initialProgressMeters = 0;
-    initialPhase = sim.startDelaySeconds > 0 ? 'waiting' : 'moving';
-  } else if (sim.startAt === 'route_end') {
-    initialProgressMeters = length;
-    initialPhase = 'completed';
-  } else {
-    const a = distances[sim.startAt.stopIndex]!;
-    const z = distances[sim.startAt.stopIndex + 1] ?? length;
-    initialProgressMeters = a + (z - a) * sim.startAt.fraction;
-    initialPhase = 'moving';
-  }
-  return {
-    initialProgressMeters,
-    initialPhase,
-    initialDelaySeconds: sim.initialDelaySeconds,
-    startDelaySeconds: sim.startDelaySeconds,
-    cruiseSpeedMps: sim.cruiseSpeedMps,
-    speedFactor: sim.speedFactor,
-    autoRestart: sim.autoRestart,
-  };
-}
 
 const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (isMain) {

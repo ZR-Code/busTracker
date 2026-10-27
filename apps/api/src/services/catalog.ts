@@ -1,6 +1,6 @@
 import type { Prisma } from '@prisma/client';
 import type { Request } from 'express';
-import type { BusStatus, RouteDetailDto, RouteServiceStatus, RouteSummaryDto, StopDto } from '@busbuddy/shared';
+import { serviceStatusFor, type RouteDetailDto, type RouteSummaryDto, type StopDto } from '@busbuddy/shared';
 import type { AppContext } from '../context';
 import { currentUser, scopeOf } from '../middleware/auth';
 import { scopeWhere } from './access';
@@ -46,15 +46,6 @@ export async function activeDisruptions(ctx: AppContext): Promise<Map<string, 'd
     if (out.get(r.routeId) !== 'disrupted') out.set(r.routeId, kind);
   }
   return out;
-}
-
-export function serviceStatusFor(route: CachedRoute, busStatuses: BusStatus[], disruption: 'delayed' | 'disrupted' | undefined): RouteServiceStatus {
-  if (!route.active) return 'inactive';
-  if (disruption === 'disrupted') return 'disrupted';
-  if (disruption === 'delayed' || busStatuses.includes('delayed')) return 'delayed';
-  const operating = busStatuses.filter((s) => s !== 'out_of_service');
-  if (operating.length > 0 && operating.every((s) => s === 'completed')) return 'completed';
-  return 'normal';
 }
 
 export async function buildRouteSummaries(ctx: AppContext, routes: CachedRoute[]): Promise<RouteSummaryDto[]> {

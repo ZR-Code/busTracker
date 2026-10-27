@@ -1,8 +1,7 @@
 import type { PrismaClient } from '@prisma/client';
-import type { ProviderStatusDto, SimulationStatusDto } from '@busbuddy/shared';
+import { makeSimRoute, SimulationEngine, type ProviderStatusDto, type SimBusConfig, type SimBusState, type SimEvent, type SimulationStatusDto } from '@busbuddy/shared';
 import { DEMO_DWELL_SECONDS } from '@busbuddy/shared/demo';
 import { logger } from '../lib/logger';
-import { makeSimRoute, SimulationEngine, type SimBusConfig, type SimBusState, type SimEvent } from '../simulation/engine';
 import type { RouteCache } from '../services/route-cache';
 import type { BusLocationProvider, LocationListener, ProviderLocation } from './types';
 
